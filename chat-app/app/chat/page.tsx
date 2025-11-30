@@ -10,78 +10,78 @@ import {
   orderBy,
   serverTimestamp,
   doc,
-  getDoc,
+  getDoc
 } from "firebase/firestore";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import md5 from "md5";
 
 interface Message {
   id: string;
   text: string;
+  senderId: string;
   senderName: string;
   timestamp: any;
 }
 
 export default function ChatRoom() {
-  const searchParams = useSearchParams();
   const router = useRouter();
-  const userId = searchParams.get("userId");
+  const searchParams = useSearchParams();
+
+  const uid = searchParams.get("uid"); // ★ 名前ではなく userId
 
   const [userName, setUserName] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Firestoreからユーザー名を取得してチェック
+  // ログイン情報（ユーザー情報）を Firestore から取得
   useEffect(() => {
-    if (!userId) {
+    if (!uid) {
       router.push("/");
       return;
     }
 
-    const fetchUser = async () => {
-      const userRef = doc(db, "users", userId);
-      const userSnap = await getDoc(userRef);
-      if (!userSnap.exists()) {
+    const loadUser = async () => {
+      const userDoc = await getDoc(doc(db, "users", uid));
+      if (!userDoc.exists()) {
         router.push("/");
         return;
       }
-      const data = userSnap.data();
-      if (!data.name) {
-        router.push("/");
-        return;
-      }
-      setUserName(data.name);
+      setUserName(userDoc.data().name);
     };
 
-    fetchUser();
-  }, [userId, router]);
+    loadUser();
+  }, [uid, router]);
 
   // メッセージ取得
   useEffect(() => {
     const messagesCol = collection(db, "messages");
     const q = query(messagesCol, orderBy("timestamp", "asc"));
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const msgs: Message[] = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       } as Message));
+
       setMessages(msgs);
       scrollRef.current?.scrollIntoView({ behavior: "smooth" });
     });
+
     return () => unsubscribe();
   }, []);
 
-  const handleSend = async (e: React.FormEvent) => {
+  const handleSend = async (e: any) => {
     e.preventDefault();
-    if (!newMessage.trim() || !userName) return;
+    if (!newMessage.trim() || !uid || !userName) return;
 
-    const messagesCol = collection(db, "messages");
-    await addDoc(messagesCol, {
+    await addDoc(collection(db, "messages"), {
       text: newMessage.trim(),
+      senderId: uid,
       senderName: userName,
       timestamp: serverTimestamp(),
     });
+
     setNewMessage("");
   };
 
@@ -91,27 +91,24 @@ export default function ChatRoom() {
   };
 
   return (
-    <div
-      style={{
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      height: "100vh",
+      backgroundColor: "#f0f0f0"
+    }}>
+      
+      {/* メッセージ一覧 */}
+      <div style={{
+        flex: 1,
+        overflowY: "auto",
+        padding: 16,
         display: "flex",
         flexDirection: "column",
-        height: "100vh",
-        backgroundColor: "#f0f0f0",
-      }}
-    >
-      {/* メッセージ表示部分 */}
-      <div
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          padding: 16,
-          display: "flex",
-          flexDirection: "column",
-          gap: 8,
-        }}
-      >
+        gap: 8
+      }}>
         {messages.map((msg) => {
-          const isSelf = msg.senderName === userName;
+          const isSelf = msg.senderId === uid;
           return (
             <div
               key={msg.id}
@@ -119,49 +116,41 @@ export default function ChatRoom() {
                 display: "flex",
                 alignItems: "flex-start",
                 justifyContent: isSelf ? "flex-end" : "flex-start",
-                gap: 8,
+                gap: 8
               }}
             >
-              {/* 他人のメッセージだけアイコン表示 */}
               {!isSelf && (
-                <img
-                  src={getAvatarUrl(msg.senderName)}
+                <img src={getAvatarUrl(msg.senderName)}
                   alt={msg.senderName}
-                  style={{ width: 32, height: 32, borderRadius: "50%" }}
-                />
+                  style={{ width: 32, height: 32, borderRadius: "50%" }} />
               )}
 
-              {/* メッセージバブル */}
-              <div
-                style={{
-                  backgroundColor: isSelf ? "#007bff" : "#fff",
-                  color: isSelf ? "#fff" : "#000",
-                  padding: "8px 12px",
-                  borderRadius: 16,
-                  maxWidth: "70%",
-                  wordBreak: "break-word",
-                  textAlign: "left",
-                }}
-              >
+              <div style={{
+                backgroundColor: isSelf ? "#007bff" : "#fff",
+                color: isSelf ? "#fff" : "#000",
+                padding: "8px 12px",
+                borderRadius: 16,
+                maxWidth: "70%",
+                wordBreak: "break-word",
+                textAlign: "left"
+              }}>
                 {!isSelf && <strong>{msg.senderName}: </strong>}
                 {msg.text}
               </div>
             </div>
           );
         })}
+
         <div ref={scrollRef} />
       </div>
 
-      {/* 入力欄：縦長、横幅は狭め */}
-      <form
-        onSubmit={handleSend}
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          padding: 16,
-          backgroundColor: "#fff",
-        }}
-      >
+      {/* 入力欄 */}
+      <form onSubmit={handleSend} style={{
+        display: "flex",
+        justifyContent: "center",
+        padding: 16,
+        backgroundColor: "#fff"
+      }}>
         <input
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
@@ -173,22 +162,19 @@ export default function ChatRoom() {
             borderRadius: 16,
             border: "1px solid #ccc",
             fontSize: 14,
-            height: 48,
+            height: 48
           }}
         />
-        <button
-          type="submit"
-          style={{
-            marginLeft: 8,
-            padding: "10px 16px",
-            borderRadius: 16,
-            backgroundColor: "#007bff",
-            color: "#fff",
-            border: "none",
-            cursor: "pointer",
-            fontSize: 14,
-          }}
-        >
+        <button type="submit" style={{
+          marginLeft: 8,
+          padding: "10px 16px",
+          borderRadius: 16,
+          backgroundColor: "#007bff",
+          color: "#fff",
+          border: "none",
+          cursor: "pointer",
+          fontSize: 14
+        }}>
           送信
         </button>
       </form>

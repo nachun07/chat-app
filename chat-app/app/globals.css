@@ -1,26 +1,96 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------
+   全端末（iPhone / Android / PC）で視認性が高いテーマ設定
+---------------------------------------------------------- */
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  --text-strong: #111111;
+  --text-normal: #222222;
+  --text-light: #444444;
+
+  --accent: #007bff;
+  --accent-text: #ffffff;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
+/* ---------------------------------------------------------
+   ダークモード時のテーマ
+---------------------------------------------------------- */
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+
+    --text-strong: #f5f5f5;
+    --text-normal: #e5e5e5;
+    --text-light: #bbbbbb;
+
+    --accent: #1e90ff;
   }
 }
 
-body {
+/* ---------------------------------------------------------
+   全体
+---------------------------------------------------------- */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
   background: var(--background);
-  color: var(--foreground);
+  color: var(--text-strong);
   font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---------------------------------------------------------
+   入力欄
+---------------------------------------------------------- */
+input,
+textarea,
+button {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-strong);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+
+/* ---------------------------------------------------------
+   チャット用バブル
+---------------------------------------------------------- */
+.bubble {
+  max-width: 80%;
+  padding: 10px 14px;
+  border-radius: 18px;
+  font-size: 15px;
+  line-height: 1.45;
+  word-break: break-word;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.bubble-left {
+  background: #ffffff;
+  color: var(--text-strong);
+}
+
+.bubble-right {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+@media (prefers-color-scheme: dark) {
+  .bubble-left {
+    background: #1a1a1a;
+    color: var(--text-normal);
+  }
 }
