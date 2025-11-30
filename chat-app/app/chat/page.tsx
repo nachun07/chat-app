@@ -1,4 +1,4 @@
-"use client";
+"use client"; // これを必ず先頭に
 
 import { useEffect, useState, useRef } from "react";
 import { db } from "../../lib/firebase";
@@ -9,49 +9,34 @@ import {
   query,
   orderBy,
   serverTimestamp,
-  doc,
-  getDoc
 } from "firebase/firestore";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import md5 from "md5";
 
 interface Message {
   id: string;
   text: string;
-  senderId: string;
   senderName: string;
   timestamp: any;
 }
 
 export default function ChatRoom() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-
-  const uid = searchParams.get("uid"); // ★ 名前ではなく userId
 
   const [userName, setUserName] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // ログイン情報（ユーザー情報）を Firestore から取得
+  // ★ localStorage から読み取る
   useEffect(() => {
-    if (!uid) {
+    const storedName = localStorage.getItem("chatUserName");
+    if (!storedName) {
       router.push("/");
       return;
     }
-
-    const loadUser = async () => {
-      const userDoc = await getDoc(doc(db, "users", uid));
-      if (!userDoc.exists()) {
-        router.push("/");
-        return;
-      }
-      setUserName(userDoc.data().name);
-    };
-
-    loadUser();
-  }, [uid, router]);
+    setUserName(storedName);
+  }, [router]);
 
   // メッセージ取得
   useEffect(() => {
@@ -73,11 +58,11 @@ export default function ChatRoom() {
 
   const handleSend = async (e: any) => {
     e.preventDefault();
-    if (!newMessage.trim() || !uid || !userName) return;
+    if (!newMessage.trim() || !userName) return;
 
-    await addDoc(collection(db, "messages"), {
+    const messagesCol = collection(db, "messages");
+    await addDoc(messagesCol, {
       text: newMessage.trim(),
-      senderId: uid,
       senderName: userName,
       timestamp: serverTimestamp(),
     });
@@ -98,7 +83,7 @@ export default function ChatRoom() {
       backgroundColor: "#f0f0f0"
     }}>
       
-      {/* メッセージ一覧 */}
+      {/* メッセージ表示 */}
       <div style={{
         flex: 1,
         overflowY: "auto",
@@ -108,7 +93,7 @@ export default function ChatRoom() {
         gap: 8
       }}>
         {messages.map((msg) => {
-          const isSelf = msg.senderId === uid;
+          const isSelf = msg.senderName === userName;
           return (
             <div
               key={msg.id}
